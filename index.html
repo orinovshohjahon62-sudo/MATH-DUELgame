@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Matematik Duel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg-top:#8b7ff0;
+    --bg-mid:#4c3f96;
+    --bg-bottom:#0d0a1c;
+    --glass: rgba(255,255,255,0.06);
+    --glass-strong: rgba(255,255,255,0.10);
+    --glass-border: rgba(255,255,255,0.14);
+    --chalk:#f3f1fb;
+
+    --easy:#8d7bf5;
+    --easy-dark:#5b46c9;
+    --medium:#b76bf0;
+    --medium-dark:#8536c4;
+    --hard:#e158c9;
+    --hard-dark:#a5299a;
+
+    --accent: var(--easy);
+    --accent-dark: var(--easy-dark);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    font-family: 'Nunito', sans-serif;
+    background: #0d0a1c;
+  }
+  #board {
+    position: relative;
+    width: 100%; height: 100%;
+    background:
+      radial-gradient(circle at 30% 8%, rgba(255,255,255,0.10) 0%, transparent 45%),
+      radial-gradient(circle at 70% 92%, rgba(255,255,255,0.06) 0%, transparent 45%),
+      linear-gradient(160deg, var(--bg-top) 0%, var(--bg-mid) 45%, var(--bg-bottom) 100%);
+    display: flex; flex-direction: column;
+  }
+  .wood {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+    box-shadow: 0 0 12px rgba(255,255,255,0.25);
+    flex-shrink: 0;
+  }
+
+  /* ---------- MENU ---------- */
+  #menu {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 30;
+    padding: 20px;
+  }
+  .menu-panel {
+    width: min(380px, 90vw);
+    background: rgba(255,255,255,0.07);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 32px;
+    padding: 34px 24px 26px;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12);
+    text-align: center;
+    position: relative;
+  }
+  .sound-toggle {
+    position: absolute;
+    top: 16px; right: 16px;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.16);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1em;
+    cursor: pointer;
+    transition: transform 0.1s ease, background 0.15s ease;
+  }
+  .sound-toggle:active { transform: scale(0.88); }
+  .op-select {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .op-btn {
+    position: relative;
+    width: 52px; height: 52px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(6px);
+    color: rgba(243,241,251,0.55);
+    font-size: 1.35em;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: transform 0.1s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .op-btn:active { transform: scale(0.9); }
+  .op-btn.active {
+    background: linear-gradient(135deg, var(--easy), var(--easy-dark));
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(91,70,201,0.4);
+  }
+  .op-btn .check {
+    position: absolute;
+    top: -6px; right: -6px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--easy-dark);
+    font-size: 0.62em;
+    font-weight: 900;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    transform: scale(0.4);
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  .op-btn.active .check { opacity: 1; transform: scale(1); }
+  .op-hint {
+    font-size: 0.68em;
+    color: rgba(243,241,251,0.4);
+    font-weight: 700;
+    margin: -12px 0 18px;
+  }
+  #menu h1 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    color: var(--chalk);
+    font-size: 2.1em;
+    margin: 0 0 2px;
+    letter-spacing: -0.5px;
+  }
+  #menu .sub {
+    color: rgba(243,241,251,0.55);
+    font-size: 0.9em;
+    margin-bottom: 22px;
+    font-weight: 700;
+  }
+  .diffcard {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 18px;
+    padding: 13px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+  }
+  .diffcard:last-child { margin-bottom: 0; }
+  .diffcard:active { transform: scale(0.97); }
+  .diffcard.selected {
+    background: rgba(255,255,255,0.10);
+    border-color: var(--card-color);
+    box-shadow: 0 0 0 1px var(--card-color) inset;
+  }
+  .diffcard .left { text-align: left; display: flex; align-items: center; gap: 14px; }
+  .diffcard .icon {
+    width: 42px; height: 42px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, var(--card-color), var(--card-color-dark));
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .diffcard .name {
+    font-size: 1.15em;
+    font-weight: 900;
+    color: var(--chalk);
+  }
+  .diffcard .desc {
+    font-size: 0.78em;
+    color: rgba(243,241,251,0.55);
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  .diffcard .dots {
+    display: flex; gap: 4px;
+  }
+  .diffcard .dots span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #fff;
+  }
+
+  .player-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 18px;
+    font-size: 0.85em;
+    font-weight: 800;
+    color: rgba(243,241,251,0.85);
+  }
+  .player-info .pts {
+    background: linear-gradient(135deg, var(--easy), var(--easy-dark));
+    padding: 3px 12px;
+    border-radius: 100px;
+    color: #fff;
+    font-size: 0.9em;
+  }
+
+  .cta-row { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+  .cta-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 16px;
+    font-weight: 800;
+    font-size: 0.95em;
+    color: #fff;
+    cursor: pointer;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.14);
+    backdrop-filter: blur(8px);
+    transition: transform 0.1s ease;
+  }
+  .cta-btn:active { transform: scale(0.97); }
+  .cta-online {
+    background: linear-gradient(135deg, var(--easy), var(--easy-dark));
+    box-shadow: 0 8px 20px rgba(91,70,201,0.4);
+  }
+  .cta-local {
+    background: rgba(255,255,255,0.06);
+  }
+  .cta-leader {
+    background: rgba(255,255,255,0.03);
+    color: rgba(243,241,251,0.7);
+    font-size: 0.85em;
+  }
+
+  /* ---------- GAME ---------- */
+  #game { display: none; flex-direction: column; height: 100%; }
+  #game.active { display: flex; }
+
+  .half {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4vh;
+    position: relative;
+    padding: 3vh 20px;
+  }
+  #topHalf { transform: rotate(180deg); }
+
+  .hud {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(6px);
+    padding: 6px 6px 6px 6px;
+    border-radius: 100px;
+    border: 1px solid var(--glass-border);
+  }
+  .diff-tag {
+    font-size: 0.65em;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: rgba(243,241,251,0.55);
+    padding: 6px 12px;
+  }
+  .score {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 90%, white), var(--accent-dark));
+    color: #fff;
+    font-size: 1.25em;
+    font-weight: 900;
+    padding: 6px 18px;
+    border-radius: 100px;
+    min-width: 44px;
+    text-align: center;
+    letter-spacing: 0.5px;
+    transition: transform 0.15s ease, filter 0.15s ease;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  .score.bump { transform: scale(1.18); }
+  .score.bump-wrong { transform: scale(0.85); filter: brightness(0.75) saturate(1.4) hue-rotate(-20deg); }
+
+  .question {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(8px);
+    color: var(--chalk);
+    font-size: 2.2em;
+    font-weight: 800;
+    padding: 16px 24px;
+    border-radius: 24px;
+    border: 1px solid var(--glass-border);
+    border-top: 3px solid var(--accent);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.28);
+    width: 260px;
+    text-align: center;
+    letter-spacing: 1px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .answers {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    width: 260px;
+  }
+  .ans-btn {
+    background: rgba(255,255,255,0.06);
+    color: var(--chalk);
+    font-size: 1.25em;
+    font-weight: 800;
+    flex: 1 1 0;
+    height: 62px;
+    padding: 0 6px;
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.28), inset 0 0 0 1.5px var(--glass-border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: transform 0.08s ease, background 0.15s ease, box-shadow 0.15s ease;
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+  }
+  .ans-btn:active { transform: scale(0.93); }
+  .ans-btn.correct {
+    background: linear-gradient(135deg, #5fd68a, #2e9e5c);
+    box-shadow: 0 4px 14px rgba(46,158,92,0.5);
+    color: #fff;
+  }
+  .ans-btn.wrong {
+    background: linear-gradient(135deg, #e0645c, #b8352e);
+    box-shadow: 0 4px 14px rgba(184,53,46,0.5);
+    color: #fff;
+  }
+
+  #pauseBtn {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 38px; height: 38px;
+    background: rgba(255,255,255,0.10);
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    gap: 4px;
+    z-index: 10;
+    cursor: pointer;
+    transition: transform 0.1s ease, background 0.15s ease;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+  }
+  #pauseBtn span {
+    width: 3px; height: 12px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.85);
+  }
+  #pauseBtn:active { transform: translate(-50%, -50%) scale(0.88); }
+
+  /* ---------- OVERLAY ---------- */
+  #overlay {
+    position: absolute; inset: 0;
+    background: rgba(10, 8, 22, 0.94);
+    display: none;
+    align-items: center; justify-content: center;
+    flex-direction: column;
+    z-index: 20;
+    color: var(--chalk);
+    text-align: center;
+    padding: 20px;
+  }
+  #overlay h1 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: 1.7em;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  #overlay p { font-size: 1em; opacity: 0.7; margin: 4px 0 26px; font-weight: 700; }
+  #overlay .btn {
+    font-weight: 800;
+    font-size: 1em;
+    padding: 13px 32px;
+    border-radius: 100px;
+    cursor: pointer;
+    color: #fff;
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.18);
+    width: 230px;
+    text-align: center;
+  }
+  #resumeBtn {
+    background: linear-gradient(135deg, rgba(141,123,245,0.55), rgba(91,70,201,0.55));
+    box-shadow: 0 8px 24px rgba(91,70,201,0.35);
+    margin-bottom: 14px;
+  }
+  #restartBtn {
+    background: rgba(255,255,255,0.09);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+    margin-bottom: 14px;
+  }
+  #menuBtn {
+    background: rgba(255,255,255,0.05);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+  }
+  #winnerLine { font-size: 1.3em; font-weight: 900; margin-bottom: 4px; }
+
+  /* ---------- ONLINE SCREENS ---------- */
+  #onlineWait, #onlineGame, #onlineEndOverlay, #leaderboardOverlay {
+    display: none;
+    position: absolute; inset: 0;
+    align-items: center; justify-content: center;
+    z-index: 25;
+    padding: 20px;
+  }
+  #onlineWait.active, #onlineGame.active, #onlineEndOverlay.active, #leaderboardOverlay.active {
+    display: flex;
+  }
+  .panel {
+    width: min(380px, 90vw);
+    background: rgba(255,255,255,0.07);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 32px;
+    padding: 30px 24px;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12);
+    text-align: center;
+    color: var(--chalk);
+  }
+  .panel h2 { font-size: 1.4em; font-weight: 900; margin: 0 0 6px; }
+  .panel p { font-size: 0.85em; color: rgba(243,241,251,0.6); font-weight: 700; margin: 0 0 20px; }
+  .room-code {
+    font-size: 2.4em;
+    font-weight: 900;
+    letter-spacing: 4px;
+    background: rgba(255,255,255,0.06);
+    border: 1px dashed var(--accent);
+    border-radius: 18px;
+    padding: 14px;
+    margin-bottom: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .spinner {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.2);
+    border-top-color: var(--accent);
+    margin: 0 auto 16px;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* online game screen (single device view) */
+  .opp-pill, .my-pill {
+    display: flex; align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    padding: 6px 8px 6px 8px;
+    width: 260px;
+    margin: 0 auto;
+    font-weight: 800;
+  }
+  .opp-pill .name, .my-pill .name { font-size: 0.85em; color: rgba(243,241,251,0.7); flex: 1; text-align: left; }
+  .opp-pill .val, .my-pill .val {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: #fff; padding: 3px 14px; border-radius: 100px; font-size: 0.95em;
+  }
+  #onlineGame .gamecol {
+    display: flex; flex-direction: column; align-items: center; gap: 3.5vh;
+    width: 100%;
+  }
+  #onlineExitBtn {
+    position: absolute; top: 20px; right: 20px;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--chalk);
+    font-size: 1.1em;
+    cursor: pointer;
+    z-index: 30;
+  }
+
+  .leader-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    text-align: left;
+  }
+  .leader-row:last-child { border-bottom: none; }
+  .leader-row .rank {
+    width: 26px; font-weight: 900; color: rgba(243,241,251,0.5); text-align: center;
+  }
+  .leader-row .lname { flex: 1; font-weight: 800; }
+  .leader-row .lpts {
+    font-weight: 900; color: var(--easy);
+  }
+  .leader-list { max-height: 45vh; overflow-y: auto; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<div id="board">
+  <div class="wood"></div>
+
+  <div id="menu">
+   <div class="menu-panel">
+    <div class="sound-toggle" id="soundToggle">🔊</div>
+    <h1>Matematik Duel</h1>
+    <div class="player-info" id="playerInfo">👤 ... <span class="pts" id="myPointsDisplay">0 ball</span></div>
+
+    <div class="op-select">
+      <div class="op-btn active" data-op="+">+<div class="check">✓</div></div>
+      <div class="op-btn" data-op="-">−<div class="check">✓</div></div>
+      <div class="op-btn" data-op="×">×<div class="check">✓</div></div>
+      <div class="op-btn" data-op="÷">÷<div class="check">✓</div></div>
+    </div>
+    <div class="op-hint">Bir nechtasini tanlash mumkin</div>
+
+    <div class="diffcard selected" style="--card-color: var(--easy); --card-color-dark: var(--easy-dark);" data-diff="easy">
+      <div class="left">
+        <div class="icon"><div class="dots"><span></span></div></div>
+        <div>
+          <div class="name">Oson</div>
+          <div class="desc">1 xonali sonlar &middot; 5 + 3</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="diffcard" style="--card-color: var(--medium); --card-color-dark: var(--medium-dark);" data-diff="medium">
+      <div class="left">
+        <div class="icon"><div class="dots"><span></span><span></span></div></div>
+        <div>
+          <div class="name">O'rta</div>
+          <div class="desc">2 xonali sonlar &middot; 24 + 38</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="diffcard" style="--card-color: var(--hard); --card-color-dark: var(--hard-dark);" data-diff="hard">
+      <div class="left">
+        <div class="icon"><div class="dots"><span></span><span></span><span></span></div></div>
+        <div>
+          <div class="name">Qiyin</div>
+          <div class="desc">3 xonali sonlar &middot; 245 + 387</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta-row">
+      <div class="cta-btn cta-online" id="inviteBtn">🌐 Do'stni taklif qilish</div>
+      <div class="cta-btn cta-local" id="localPlayBtn">🎮 Shu telefonda 2 kishi</div>
+      <div class="cta-btn cta-leader" id="leaderBtn">🏆 Top 10 reyting</div>
+    </div>
+   </div>
+  </div>
+
+  <!-- ONLINE: waiting for opponent -->
+  <div id="onlineWait">
+    <div class="panel">
+      <h2>Do'stingizni kuting</h2>
+      <p>Havolani yuboring, u qo'shilishi bilan o'yin boshlanadi</p>
+      <div class="room-code" id="roomCodeText">-----</div>
+      <div class="cta-row">
+        <div class="cta-btn cta-online" id="shareRoomBtn">📤 Havolani yuborish</div>
+        <div class="cta-btn cta-local" id="copyRoomBtn">🔗 Havolani nusxalash</div>
+        <div class="cta-btn cta-leader" id="cancelRoomBtn">Bekor qilish</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONLINE: live game -->
+  <div id="onlineGame">
+    <div id="onlineExitBtn">✕</div>
+    <div class="gamecol">
+      <div class="opp-pill"><span id="oppAvatar" style="display:flex;"></span><span class="name" id="oppName">Raqib</span><span class="val" id="oppScore">0</span></div>
+      <div class="question" id="onlineQ">?</div>
+      <div class="answers" id="onlineAns"></div>
+      <div class="my-pill"><span id="myAvatar" style="display:flex;"></span><span class="name">Siz</span><span class="val" id="myScore">0</span></div>
+    </div>
+  </div>
+
+  <!-- ONLINE: end of match -->
+  <div id="onlineEndOverlay">
+    <div class="panel">
+      <h2 id="onlineResultTitle">🏆 Siz yutdingiz!</h2>
+      <p id="onlineResultSub">+10 ball qo'shildi</p>
+      <div class="cta-row">
+        <div class="cta-btn cta-online" id="onlinePlayAgainBtn">Yana o'ynash</div>
+        <div class="cta-btn cta-leader" id="onlineToMenuBtn">Menyu</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="leaderboardOverlay">
+    <div class="panel">
+      <h2>🏆 Top 10 reyting</h2>
+      <p>Eng ko'p ball to'plagan o'yinchilar</p>
+      <div class="leader-list" id="leaderList"></div>
+      <div class="cta-btn cta-leader" id="closeLeaderBtn">Yopish</div>
+    </div>
+  </div>
+
+
+  <div id="game">
+    <div class="half" id="topHalf">
+      <div class="hud">
+        <span class="diff-tag" id="diffTagTop">OSON</span>
+        <div class="score" id="scoreTop">0</div>
+      </div>
+      <div class="question" id="qTop">?</div>
+      <div class="answers" id="ansTop"></div>
+    </div>
+
+    <div id="pauseBtn"><span></span><span></span></div>
+
+    <div class="half" id="bottomHalf">
+      <div class="hud">
+        <span class="diff-tag" id="diffTagBottom">OSON</span>
+        <div class="score" id="scoreBottom">0</div>
+      </div>
+      <div class="question" id="qBottom">?</div>
+      <div class="answers" id="ansBottom"></div>
+    </div>
+  </div>
+
+  <div class="wood"></div>
+
+  <div id="overlay">
+    <div id="winnerLine"></div>
+    <h1 id="overlayTitle">O'yin to'xtatildi</h1>
+    <p id="overlaySub">Kim birinchi bo'lib 10 ballga yetsa — g'olib!</p>
+    <div class="btn" id="resumeBtn">Davom etish</div>
+    <div class="btn" id="restartBtn">Restart</div>
+    <div class="btn" id="menuBtn">Menyu</div>
+  </div>
+</div>
+
+<script>
+const WIN_SCORE = 10;
+const DIFFICULTIES = {
+  easy:   { label: 'OSON',  min: 1,   max: 9,   optDelta: 3,  accent: '--easy',   accentDark: '--easy-dark' },
+  medium: { label: "O'RTA", min: 10,  max: 99,  optDelta: 12, accent: '--medium', accentDark: '--medium-dark' },
+  hard:   { label: 'QIYIN', min: 100, max: 999, optDelta: 60, accent: '--hard',   accentDark: '--hard-dark' }
+};
+
+let audioCtx = null;
+let soundOn = true;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playTone(freq, duration, type, delay, gainVal) {
+  if (!soundOn) return;
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type || 'sine';
+  osc.frequency.value = freq;
+  const start = ctx.currentTime + (delay || 0);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(gainVal || 0.18, start + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(start);
+  osc.stop(start + duration + 0.02);
+}
+function sfxClick() { playTone(520, 0.07, 'square', 0, 0.10); }
+function sfxCorrect() {
+  playTone(660, 0.09, 'sine', 0, 0.16);
+  playTone(880, 0.14, 'sine', 0.08, 0.16);
+}
+function sfxWrong() {
+  playTone(180, 0.18, 'sawtooth', 0, 0.14);
+}
+function sfxWin() {
+  [523, 659, 784, 1046].forEach((f, i) => playTone(f, 0.16, 'sine', i * 0.1, 0.17));
+}
+
+let currentDiff = 'easy';
+let scores = { top: 0, bottom: 0 };
+let paused = false;
+let gameOver = false;
+const state = { top: null, bottom: null };
+
+document.getElementById('soundToggle').addEventListener('click', (e) => {
+  e.stopPropagation();
+  soundOn = !soundOn;
+  document.getElementById('soundToggle').textContent = soundOn ? '🔊' : '🔇';
+  if (soundOn) sfxClick();
+});
+
+let selectedOps = ['+'];
+
+document.querySelectorAll('.op-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const op = btn.dataset.op;
+    const isActive = btn.classList.contains('active');
+    if (isActive) {
+      if (selectedOps.length === 1) return; // keep at least one selected
+      sfxClick();
+      selectedOps = selectedOps.filter(o => o !== op);
+      btn.classList.remove('active');
+    } else {
+      sfxClick();
+      selectedOps.push(op);
+      btn.classList.add('active');
+    }
+  });
+});
+
+function rnd(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+function genQuestion() {
+  const d = DIFFICULTIES[currentDiff];
+  const op = selectedOps[rnd(0, selectedOps.length - 1)];
+  let a, b, answer;
+
+  if (op === '+') {
+    a = rnd(d.min, d.max);
+    b = rnd(d.min, d.max);
+    answer = a + b;
+  } else if (op === '-') {
+    a = rnd(d.min, d.max);
+    b = rnd(d.min, a);
+    answer = a - b;
+  } else if (op === '×') {
+    // keep the second factor single-digit so products stay reasonable
+    a = rnd(d.min, d.max);
+    b = rnd(2, 9);
+    answer = a * b;
+  } else {
+    // division: build from a clean quotient so the result is a whole number
+    b = rnd(2, 9);
+    answer = rnd(d.min, d.max);
+    a = b * answer;
+  }
+  return { text: `${a} ${op} ${b}`, answer, op };
+}
+
+function genOptions(correct, op) {
+  const d = DIFFICULTIES[currentDiff];
+  const delta = (op === '×' || op === '÷') ? Math.max(3, Math.round(d.optDelta / 4)) : d.optDelta;
+  const opts = new Set([correct]);
+  let guard = 0;
+  while (opts.size < 3 && guard < 50) {
+    guard++;
+    const off = rnd(-delta, delta);
+    const candidate = correct + off;
+    if (candidate >= 0 && candidate !== correct) opts.add(candidate);
+  }
+  return shuffle([...opts]);
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = rnd(0, i);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function renderSide(side) {
+  const q = genQuestion();
+  state[side] = q;
+  document.getElementById(side === 'top' ? 'qTop' : 'qBottom').textContent = q.text;
+  const options = genOptions(q.answer, q.op);
+  const ansContainer = document.getElementById(side === 'top' ? 'ansTop' : 'ansBottom');
+  ansContainer.innerHTML = '';
+  options.forEach(val => {
+    const btn = document.createElement('div');
+    btn.className = 'ans-btn';
+    btn.textContent = val;
+    btn.addEventListener('click', () => handleAnswer(side, val, btn));
+    ansContainer.appendChild(btn);
+  });
+}
+
+function handleAnswer(side, val, btnEl) {
+  if (paused || gameOver) return;
+  const correct = state[side].answer;
+  if (val === correct) {
+    sfxCorrect();
+    btnEl.classList.add('correct');
+    scores[side]++;
+    const scoreEl = document.getElementById(side === 'top' ? 'scoreTop' : 'scoreBottom');
+    scoreEl.textContent = scores[side];
+    scoreEl.classList.add('bump');
+    setTimeout(() => scoreEl.classList.remove('bump'), 150);
+
+    if (scores[side] >= WIN_SCORE) {
+      endGame(side);
+      return;
+    }
+    setTimeout(() => renderSide(side), 250);
+  } else {
+    sfxWrong();
+    btnEl.classList.add('wrong');
+    scores[side] = Math.max(0, scores[side] - 1);
+    const scoreEl = document.getElementById(side === 'top' ? 'scoreTop' : 'scoreBottom');
+    scoreEl.textContent = scores[side];
+    scoreEl.classList.add('bump-wrong');
+    setTimeout(() => scoreEl.classList.remove('bump-wrong'), 200);
+    setTimeout(() => btnEl.classList.remove('wrong'), 300);
+  }
+}
+
+function applyDiffTheme(diffKey) {
+  const d = DIFFICULTIES[diffKey];
+  const root = document.documentElement;
+  root.style.setProperty('--accent', `var(${d.accent})`);
+  root.style.setProperty('--accent-dark', `var(${d.accentDark})`);
+  document.getElementById('diffTagTop').textContent = d.label;
+  document.getElementById('diffTagBottom').textContent = d.label;
+}
+
+function startGame(diffKey) {
+  currentDiff = diffKey;
+  applyDiffTheme(diffKey);
+  scores = { top: 0, bottom: 0 };
+  gameOver = false;
+  paused = false;
+  document.getElementById('scoreTop').textContent = 0;
+  document.getElementById('scoreBottom').textContent = 0;
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('game').classList.add('active');
+  renderSide('top');
+  renderSide('bottom');
+}
+
+document.querySelectorAll('.diffcard').forEach(card => {
+  card.addEventListener('click', () => {
+    sfxClick();
+    document.querySelectorAll('.diffcard').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    currentDiff = card.dataset.diff;
+  });
+});
+
+document.getElementById('localPlayBtn').addEventListener('click', () => {
+  sfxClick();
+  startGame(currentDiff);
+});
+
+function endGame(winnerSide) {
+  gameOver = true;
+  sfxWin();
+  const label = winnerSide === 'top' ? "Yuqori o'yinchi" : "Pastki o'yinchi";
+  document.getElementById('winnerLine').textContent = `🏆 ${label} yutdi!`;
+  document.getElementById('overlayTitle').textContent = "O'yin tugadi";
+  document.getElementById('overlaySub').textContent = 'Yana o\'ynashni xohlaysizmi?';
+  document.getElementById('resumeBtn').style.display = 'none';
+  showOverlay();
+}
+
+function showOverlay() {
+  document.getElementById('overlay').style.display = 'flex';
+  paused = true;
+}
+function hideOverlay() {
+  document.getElementById('overlay').style.display = 'none';
+  paused = false;
+}
+
+document.getElementById('pauseBtn').addEventListener('click', () => {
+  sfxClick();
+  if (gameOver) return;
+  document.getElementById('winnerLine').textContent = '';
+  document.getElementById('overlayTitle').textContent = "O'yin to'xtatildi";
+  document.getElementById('overlaySub').textContent = `Kim birinchi bo'lib ${WIN_SCORE} ballga yetsa — g'olib!`;
+  document.getElementById('resumeBtn').style.display = 'block';
+  showOverlay();
+});
+
+document.getElementById('resumeBtn').addEventListener('click', () => {
+  sfxClick();
+  hideOverlay();
+});
+
+document.getElementById('restartBtn').addEventListener('click', () => {
+  sfxClick();
+  startGame(currentDiff);
+  hideOverlay();
+});
+
+document.getElementById('menuBtn').addEventListener('click', () => {
+  sfxClick();
+  hideOverlay();
+  gameOver = false;
+  document.getElementById('game').classList.remove('active');
+  document.getElementById('menu').style.display = 'flex';
+});
+
+/* ==========================================================
+   ONLINE MULTIPLAYER (Telegram Mini App + Supabase)
+   ========================================================== */
+
+// --- CONFIG ---
+const SUPABASE_URL = 'https://rbmnhaonpohyjuwiwcpn.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJibW5oYW9ucG9oeWp1d2l3Y3BuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2NDkxMjcsImV4cCI6MjA5OTIyNTEyN30.PI6l-5NegH0ANxQ7gpCiv6rr61wnw9_mHHuvfs4sgqs';
+// BotFather orqali yaratilgan mini-app havolasi
+const BOT_APP_LINK_BASE = 'https://t.me/Mathfight_bot/Enterduel';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// --- TELEGRAM USER ---
+const tg = window.Telegram?.WebApp;
+try { tg?.ready(); tg?.expand(); } catch (e) {}
+const tgUser = tg?.initDataUnsafe?.user;
+const myId = tgUser?.id || (Number(sessionStorage?.getItem?.('guestId')) || Math.floor(Math.random() * 1e9));
+const myName = tgUser?.first_name || 'Mehmon';
+const startParam = tg?.initDataUnsafe?.start_param || null;
+
+let myProfile = { telegram_id: myId, name: myName, points: 0, wins: 0, losses: 0, photo_url: tgUser?.photo_url || null };
+
+async function ensurePlayer() {
+  try {
+    const { data } = await sb.from('players').select('*').eq('telegram_id', myId).maybeSingle();
+    if (!data) {
+      const fresh = { telegram_id: myId, name: myName, points: 0, wins: 0, losses: 0, photo_url: tgUser?.photo_url || null };
+      await sb.from('players').insert(fresh);
+      myProfile = fresh;
+    } else {
+      myProfile = data;
+      const updates = {};
+      if (data.name !== myName) updates.name = myName;
+      if (tgUser?.photo_url && data.photo_url !== tgUser.photo_url) updates.photo_url = tgUser.photo_url;
+      if (Object.keys(updates).length) {
+        sb.from('players').update(updates).eq('telegram_id', myId);
+        Object.assign(myProfile, updates);
+      }
+    }
+  } catch (e) { console.error('ensurePlayer', e); }
+  updatePlayerInfoUI();
+}
+
+function avatarHtml(url, name, size) {
+  size = size || 32;
+  if (url) {
+    return `<img src="${url}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.25);" />`;
+  }
+  const letter = (name || '?').trim().charAt(0).toUpperCase();
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:linear-gradient(135deg,var(--easy),var(--easy-dark));display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:${size*0.42}px;">${letter}</div>`;
+}
+
+function updatePlayerInfoUI() {
+  document.getElementById('playerInfo').innerHTML =
+    `${avatarHtml(myProfile.photo_url, myProfile.name, 26)} ${myProfile.name} <span class="pts" id="myPointsDisplay">${myProfile.points} ball</span>`;
+}
+
+// --- LEADERBOARD ---
+async function fetchLeaderboard() {
+  try {
+    const { data } = await sb.from('players').select('*').order('points', { ascending: false }).limit(10);
+    return data || [];
+  } catch (e) { console.error('leaderboard', e); return []; }
+}
+
+async function openLeaderboard() {
+  sfxClick();
+  const list = document.getElementById('leaderList');
+  list.innerHTML = '<div style="text-align:center;padding:20px;opacity:0.6;">Yuklanmoqda...</div>';
+  showScreen('leaderboardOverlay');
+  const rows = await fetchLeaderboard();
+  if (!rows.length) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;opacity:0.6;">Hali hech kim ball to\'plamagan</div>';
+    return;
+  }
+  list.innerHTML = rows.map((r, i) =>
+    `<div class="leader-row"><span class="rank">${i + 1}</span>${avatarHtml(r.photo_url, r.name, 28)}<span class="lname">${escapeHtml(r.name)}</span><span class="lpts">${r.points}</span></div>`
+  ).join('');
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// --- SCREEN NAVIGATION ---
+function showScreen(id) {
+  ['menu', 'onlineWait', 'onlineGame', 'onlineEndOverlay', 'leaderboardOverlay'].forEach(s => {
+    const el = document.getElementById(s);
+    if (!el) return;
+    if (s === 'menu') { el.style.display = (id === 'menu') ? 'flex' : 'none'; }
+    else { el.classList.toggle('active', id === s); }
+  });
+}
+
+// --- ROOM CODE ---
+function genRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+let currentRoomCode = null;
+let iAmHost = false;
+let roomChannel = null;
+let onlineQ = null;
+let onlineFinished = false;
+
+async function createRoom() {
+  const code = genRoomCode();
+  const opsStr = selectedOps.join(',');
+  try {
+    await sb.from('rooms').insert({
+      code, host_id: myId, host_name: myProfile.name, host_photo: myProfile.photo_url || null,
+      status: 'waiting', difficulty: currentDiff, operations: opsStr,
+      host_score: 0, guest_score: 0
+    });
+  } catch (e) { console.error('createRoom', e); return null; }
+  return code;
+}
+
+async function joinRoomByCode(code) {
+  try {
+    const { data: room } = await sb.from('rooms').select('*').eq('code', code).maybeSingle();
+    if (!room) return null;
+    if (!room.guest_id) {
+      await sb.from('rooms')
+        .update({ guest_id: myId, guest_name: myProfile.name, guest_photo: myProfile.photo_url || null, status: 'playing' })
+        .eq('code', code).eq('status', 'waiting');
+    }
+    const { data: fresh } = await sb.from('rooms').select('*').eq('code', code).maybeSingle();
+    return fresh;
+  } catch (e) { console.error('joinRoom', e); return null; }
+}
+
+function subscribeRoom(code, onUpdate) {
+  if (roomChannel) sb.removeChannel(roomChannel);
+  roomChannel = sb.channel('room-' + code)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `code=eq.${code}` },
+      payload => onUpdate(payload.new))
+    .subscribe();
+}
+
+// --- INVITE FLOW ---
+document.getElementById('inviteBtn').addEventListener('click', async () => {
+  sfxClick();
+  showScreen('onlineWait');
+  document.getElementById('roomCodeText').textContent = '·····';
+  const code = await createRoom();
+  if (!code) { alert('Xona yaratib bo\'lmadi. Qayta urinib ko\'ring.'); showScreen('menu'); return; }
+  currentRoomCode = code;
+  iAmHost = true;
+  onlineFinished = false;
+  document.getElementById('roomCodeText').textContent = code;
+
+  subscribeRoom(code, (room) => {
+    if (room.status === 'playing' && room.guest_id && !document.getElementById('onlineGame').classList.contains('active')) {
+      enterOnlineGame(room);
+    }
+    handleOnlineRoomUpdate(room);
+  });
+});
+
+function buildInviteLink(code) {
+  return `${BOT_APP_LINK_BASE}?startapp=${code}`;
+}
+
+document.getElementById('shareRoomBtn').addEventListener('click', async () => {
+  sfxClick();
+  if (!currentRoomCode) return;
+  const link = buildInviteLink(currentRoomCode);
+  const shareText = "Matematik duelga qo'shil! 🔥";
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Matematik Duel', text: shareText, url: link });
+      return;
+    } catch (e) { /* user cancelled or unsupported, fall through */ }
+  }
+
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`;
+  if (tg?.openTelegramLink) tg.openTelegramLink(shareUrl);
+  else window.open(shareUrl, '_blank');
+});
+
+document.getElementById('copyRoomBtn').addEventListener('click', async () => {
+  sfxClick();
+  if (!currentRoomCode) return;
+  const link = buildInviteLink(currentRoomCode);
+  const btn = document.getElementById('copyRoomBtn');
+  try {
+    await navigator.clipboard.writeText(link);
+    const original = btn.textContent;
+    btn.textContent = '✅ Nusxalandi!';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  } catch (e) {
+    btn.textContent = '⚠️ Nusxalab bo\'lmadi';
+    setTimeout(() => { btn.textContent = '🔗 Havolani nusxalash'; }, 1500);
+  }
+});
+
+document.getElementById('cancelRoomBtn').addEventListener('click', async () => {
+  sfxClick();
+  if (currentRoomCode) {
+    try { await sb.from('rooms').delete().eq('code', currentRoomCode).eq('status', 'waiting'); } catch (e) {}
+  }
+  if (roomChannel) { sb.removeChannel(roomChannel); roomChannel = null; }
+  currentRoomCode = null;
+  showScreen('menu');
+});
+
+// --- JOINING VIA LINK (start_param) ---
+async function tryAutoJoin() {
+  if (!startParam) return;
+  showScreen('onlineWait');
+  document.getElementById('roomCodeText').textContent = startParam;
+  document.querySelector('#onlineWait .cta-row').style.display = 'none';
+  document.querySelector('#onlineWait p').textContent = "Xonaga qo'shilinmoqda...";
+  const room = await joinRoomByCode(startParam);
+  if (!room) {
+    document.querySelector('#onlineWait p').textContent = "Xona topilmadi yoki eskirgan";
+    return;
+  }
+  currentRoomCode = room.code;
+  iAmHost = (room.host_id === myId);
+  onlineFinished = false;
+  currentDiff = room.difficulty;
+  selectedOps = room.operations.split(',');
+  subscribeRoom(room.code, (r) => handleOnlineRoomUpdate(r));
+  enterOnlineGame(room);
+}
+
+// --- ONLINE GAME ---
+function enterOnlineGame(room) {
+  currentDiff = room.difficulty;
+  selectedOps = room.operations.split(',');
+  const oppName = iAmHost ? (room.guest_name || 'Raqib') : room.host_name;
+  const oppPhoto = iAmHost ? room.guest_photo : room.host_photo;
+  document.getElementById('oppName').textContent = oppName;
+  document.getElementById('oppAvatar').innerHTML = avatarHtml(oppPhoto, oppName, 26);
+  document.getElementById('myAvatar').innerHTML = avatarHtml(myProfile.photo_url, myProfile.name, 26);
+  document.getElementById('oppScore').textContent = iAmHost ? room.guest_score : room.host_score;
+  document.getElementById('myScore').textContent = iAmHost ? room.host_score : room.guest_score;
+  showScreen('onlineGame');
+  renderOnlineQuestion();
+}
+
+function renderOnlineQuestion() {
+  const q = genQuestion();
+  onlineQ = q;
+  document.getElementById('onlineQ').textContent = q.text;
+  const options = genOptions(q.answer, q.op);
+  const box = document.getElementById('onlineAns');
+  box.innerHTML = '';
+  options.forEach(val => {
+    const btn = document.createElement('div');
+    btn.className = 'ans-btn';
+    btn.textContent = val;
+    btn.addEventListener('click', () => handleOnlineAnswer(val, btn));
+    box.appendChild(btn);
+  });
+}
+
+async function handleOnlineAnswer(val, btnEl) {
+  if (onlineFinished || !onlineQ) return;
+  const myScoreEl = document.getElementById('myScore');
+  let myScore = parseInt(myScoreEl.textContent, 10) || 0;
+
+  if (val === onlineQ.answer) {
+    sfxCorrect();
+    btnEl.classList.add('correct');
+    myScore++;
+  } else {
+    sfxWrong();
+    btnEl.classList.add('wrong');
+    myScore = Math.max(0, myScore - 1);
+    setTimeout(() => btnEl.classList.remove('wrong'), 300);
+  }
+  myScoreEl.textContent = myScore;
+
+  const field = iAmHost ? 'host_score' : 'guest_score';
+  try { await sb.from('rooms').update({ [field]: myScore }).eq('code', currentRoomCode); } catch (e) {}
+
+  if (myScore >= WIN_SCORE) {
+    onlineFinished = true;
+    sfxWin();
+    try {
+      await sb.from('rooms')
+        .update({ status: 'finished', winner_id: myId })
+        .eq('code', currentRoomCode).eq('status', 'playing');
+    } catch (e) {}
+    await applyOnlinePoints(true);
+    showOnlineResult(true);
+    return;
+  }
+  setTimeout(() => { if (!onlineFinished) renderOnlineQuestion(); }, 250);
+}
+
+function handleOnlineRoomUpdate(room) {
+  if (!document.getElementById('onlineGame').classList.contains('active')) return;
+  document.getElementById('oppScore').textContent = iAmHost ? room.guest_score : room.host_score;
+  if (room.status === 'finished' && !onlineFinished) {
+    onlineFinished = true;
+    const iWon = room.winner_id === myId;
+    if (!iWon) sfxWrong();
+    applyOnlinePoints(iWon).then(() => showOnlineResult(iWon));
+  }
+}
+
+async function applyOnlinePoints(won) {
+  const delta = won ? 10 : -10;
+  try {
+    const { data } = await sb.from('players').select('points,wins,losses').eq('telegram_id', myId).maybeSingle();
+    const newPoints = Math.max(0, (data?.points || 0) + delta);
+    await sb.from('players').update({
+      points: newPoints,
+      wins: (data?.wins || 0) + (won ? 1 : 0),
+      losses: (data?.losses || 0) + (won ? 0 : 1)
+    }).eq('telegram_id', myId);
+    myProfile.points = newPoints;
+    updatePlayerInfoUI();
+  } catch (e) { console.error('applyOnlinePoints', e); }
+}
+
+function showOnlineResult(won) {
+  document.getElementById('onlineResultTitle').textContent = won ? '🏆 Siz yutdingiz!' : '😔 Siz yutqazdingiz';
+  document.getElementById('onlineResultSub').textContent = won ? '+10 ball qo\'shildi' : '-10 ball ayirildi';
+  showScreen('onlineEndOverlay');
+}
+
+document.getElementById('onlineExitBtn').addEventListener('click', () => {
+  sfxClick();
+  if (roomChannel) { sb.removeChannel(roomChannel); roomChannel = null; }
+  currentRoomCode = null;
+  onlineFinished = false;
+  showScreen('menu');
+});
+
+document.getElementById('onlinePlayAgainBtn').addEventListener('click', () => {
+  sfxClick();
+  showScreen('menu');
+});
+
+document.getElementById('onlineToMenuBtn').addEventListener('click', () => {
+  sfxClick();
+  showScreen('menu');
+});
+
+document.getElementById('leaderBtn').addEventListener('click', openLeaderboard);
+document.getElementById('closeLeaderBtn').addEventListener('click', () => {
+  sfxClick();
+  showScreen('menu');
+});
+
+// --- INIT ---
+(async function initOnline() {
+  await ensurePlayer();
+  if (startParam) {
+    await tryAutoJoin();
+  }
+})();
+</script>
+
+</body>
+</html>
